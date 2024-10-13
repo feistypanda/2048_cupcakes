@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html> 
+    <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c&family=Rowdies:wght@300;400;700&family=Signika:wght@300..700&display=swap" rel="stylesheet">
+
+
+
+        <title>2048</title> 
+        <style type="text/css">
+
+            *{
+                margin: 0px;
+                overflow: hidden;
+            }            
+            
+        </style>
+    </head>
+    <body>
+        <p align = "center">
+            <canvas id="mycanvas"></canvas> 
+        </p>
+    </body>
+ 
+    <script src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js"></script> 
+
+    <script type>
+
+function main() {
+
+var programCode = function(processingInstance) {
+with (processingInstance) {
+
+var IMPACT = createFont("impact");
+
+smooth();
+frameRate(60);
+size(window.innerWidth, window.innerHeight, P2D);
+
+var CONSTRAINIG_DIMENSION = min(width, height);
+
+var keys = {};
+
+var colors = {
+    "0":    color(255),
+    "2": -14236,
+    "4": -3753902,
+    "8": -7427776,
+    "16": -11167442,
+    "32": -14841315,
+    "64": -12027352,
+    "128": -9213389,
+    "256": -6399426,
+    "512": -3585462,
+    "1024": -5287831,
+    "2048": -6924407,
+    "4096": -8561240,
+    "8192": color(255),
+};
+
+// misc functions
+var miscFunctions = (function() {
+    var miscFunctions = function() {};
+    
+    miscFunctions.prototype.randArrayElement = function(arr) {
+        return arr[floor(random(0, arr.length - 0.00001))];
+    };
+    
+    miscFunctions.prototype.indexInArray = function(arr, i, j) {
+        if (j !== undefined) {
+            return i >= 0 && i < arr.length && j >= 0 && j < arr[i].length;
+        } else {
+            return i >= 0 && i < arr.length;
+        }
+    };
+    
+    return new miscFunctions();
+})();
+
+var board, animations;
+
+// board/grid function
+var board = (function() {
+    
+    // number of squares in grid
+    var GRID_SIZE = 4;
+    
+    // how big are the squares?
+    var TILE_SIZE = CONSTRAINIG_DIMENSION * 0.7 / GRID_SIZE;
+    
+    // create an object type for the board
+    var Board = function() {
+        
+        // initialize the grid, creates a nested array with dimensions of the board size
+        this.grid = (function() {
+            
+            var arr = [];
+            
+            // horizontal segment
+            for (var i = 0; i < GRID_SIZE; i ++){
+                arr.push([]);
+            }
+            
+            i = 0;
+            
+            for (var i in arr) {
+                for (var i = 0; i < GRID_SIZE; i ++){
+                    arr[i].push(0);
+                }
+            }
+            return arr;
+        })();
+
+        this.newTiles = [];
+        
+        this.tileSize = TILE_SIZE;
+        
+        this.boardX = CONSTRAINIG_DIMENSION * 0.15 + (width - CONSTRAINIG_DIMENSION)/2;
+        this.boardY = CONSTRAINIG_DIMENSION * 0.15;
+        
+        this.boardW = CONSTRAINIG_DIMENSION - CONSTRAINIG_DIMENSION * 0.3;
+        this.boardH = CONSTRAINIG_DIMENSION - CONSTRAINIG_DIMENSION * 0.3;
+
+        this.canSlide = false;
+    };
+    
+    Board.prototype.newTile = function() {
+
+        // locate all empty tiles
+
+        // will be filled with indexes of empty tiles
+        var emptyTiles = [];
+
+        for (var i in this.grid) {
+
+            for (var j in this.grid[i]) {
+
+                // is  the tile empty?
+                if (this.grid[i][j] === 0) {
+                    
+                    // add that index to the list of empty tiles
+                    emptyTiles.push([i, j]);
+                }
+                
+            }    
+        }
+
+        // chose a random one
+        var chosenTile = miscFunctions.randArrayElement(emptyTiles);
+
+        // change it to four or two
+        if (chosenTile !== undefined) {
+            this.grid[chosenTile[0]][chosenTile[1]] = random() < 0.9 ? 2 : 4;
+        }
+    };
+    
+    Board.prototype.displayTile = function(i, j, white) {
+        noStroke();
+        
+        var x = j * (this.tileSize) + this.boardX + this.tileSize * 0.1;
+        var y = i * (this.tileSize) + this.boardY + this.tileSize * 0.1;
+        
+        var w = this.tileSize * 0.8;
+        var h = w;
+        
+        fill(this.grid[i][j] <= 8192 ? colors[this.grid[i][j]]:color(255));
+        if (white) {
+            fill(255);
+        }
+        rect(
+            x, y, w, h, 5
+        );
+        
+        if (this.grid[i][j] > 0 && !white) {
+            textAlign(CENTER, CENTER);
+            fill(0);
+            textFont(IMPACT, CONSTRAINIG_DIMENSION/34.84);
+            text(this.grid[i][j], x + w/2, y + h/2);
+        }
+    };
+    
+    Board.prototype.display = function() {
+        
+        // {
+        fill(255, 223, 196);
+        noStroke();
+        
+        rect(
+            this.boardX - this.tileSize * 0.1,
+            this.boardY - this.tileSize * 0.1,
+            this.boardW + this.tileSize * 0.2,
+            this.boardH + this.tileSize * 0.2,
+            5
+        );
+        //} background square
+        
+        //{
+        
+        for (var i in this.grid) {
+            for (var j in this.grid[i]) {
+                if (!animations.isTileAnimated(i, j)) {
+                    this.displayTile(i, j);
+                } else {
+                    this.displayTile(i, j, true);
+                }
+            }
+        }
+        //} tiles    
+    };
+
+    Board.prototype.findSlideDestination = function(direc, pos) {
+
+        // if we run into an invalid spot, the spot before is the target
+        if (!miscFunctions.indexInArray(this.grid, pos[0], pos[1]) || (this.grid[pos[0]][pos[1]] !== 0)) {
+
+            // return the spot before the invalid spot
+            return [pos[0] - direc[0], pos[1] - direc[1]];
+        }
+
+        // if the spot is still valid, move the spot that will be checked forewards
+        pos[0] += direc[0];
+        pos[1] += direc[1];
+
+        // check the next spot
+        return this.findSlideDestination(direc, pos);
+    };
+
+    Board.prototype.slideTile = function(direc, i, j) {
+
+        // save the value of the square to be moved
+        var g = this.grid[i][j];
+        this.grid[i][j] = 0;
+
+        // find availible spot using recursive functions
+
+        var destination = this.findSlideDestination(direc, [i, j]);
+        var finalDestination = [];
+
+        // check if the tile can combine w/ the tile infront of it
+        if (
+                miscFunctions.indexInArray(this.grid, destination[0] + direc[0], destination[1] + direc[1]) && 
+                this.grid[destination[0] + direc[0]] [destination[1] + direc[1]] === g
+            ){
+
+            // set the spot that the tile is sliding to to twice the value of the tile, but only if a tile hasnt combined there yet
+            // println();
+            if (!this.newTiles.includes((destination[0] + direc[0]) + "" + (destination[1] + direc[1]))) {
+                this.grid[destination[0] + direc[0]][destination[1] + direc[1]] = g << 1;
+                this.newTiles.push((destination[0] + direc[0]) + "" + (destination[1] + direc[1]));
+                finalDestination = [destination[0] + direc[0], destination[1] + direc[1]];
+            } else {
+                this.grid[destination[0]][destination[1]] = g;
+                finalDestination = [destination[0], destination[1]];
+            }
+        } else {
+            // set the spot that the tile is sliding to to the value of the tile
+            this.grid[destination[0]][destination[1]] = g;
+            finalDestination = [destination[0], destination[1]];
+        }
+
+        // if the peice even moved
+        if (this.grid[i][j] === 0) {
+            // add the animation of the sliding
+            animations.add({
+                start: [i, j],
+                target: finalDestination,
+                type: "slide",
+            });
+            // peice moved
+            return 1;
+        } 
+
+        // peice not moved
+
+        return 0;
+    };
+
+    Board.prototype.slideUp = function() {
+
+        // the number of peices that were moved
+        var movedPeices = 0;
+
+        // loop through all of the tiles, from top to bottom
+        // start at i = 1 because the first row cant slide up
+        for (var i = 1; i < this.grid.length; i++) {
+            for (var j = 0; j < this.grid[i].length; j++) {
+
+                // only move if there is a peice
+                if (this.grid[i][j] > 0) {
+                    movedPeices += this.slideTile([-1, 0], i, j);
+                }
+            }
+        }
+
+        // return false if no peices were moved so that we dont create a new tile
+        return movedPeices > 0;
+    };
+
+    Board.prototype.slideDown = function() {
+
+        // the number of peices that were moved
+        var movedPeices = 0;
+
+        // loop through all of the tiles, from bottom to top
+        // start at i = length - 2 because the first row cant slide down
+        for (var i = this.grid.length - 2; i >= 0; i--) {
+            for (var j = 0; j < this.grid[i].length; j++) {
+
+                // only move if there is a peice
+                if (this.grid[i][j] > 0) {
+                    movedPeices += this.slideTile([1, 0], i, j);
+                }
+            }
+        }
+
+        // return false if no peices were moved so that we dont create a new tile
+        return movedPeices > 0;
+    };
+
+    Board.prototype.slideRight = function() {
+
+        // the number of peices that were moved
+        var movedPeices = 0;
+
+        // loop through all of the tiles, from right to left
+        // start at j = length - 2 because the first row cant slide down
+        for (var j = this.grid.length - 2; j >= 0; j--) {
+            for (var i = 0; i < this.grid[j].length; i++) {
+
+                // only move if there is a peice
+                if (this.grid[i][j] > 0) {
+                    movedPeices += this.slideTile([0, 1], i, j);
+                }
+            }
+        }
+
+        // return false if no peices were moved so that we dont create a new tile
+        return movedPeices > 0;
+    };
+
+    Board.prototype.slideLeft = function() {
+
+        // the number of peices that were moved
+        var movedPeices = 0;
+
+        // loop through all of the tiles, from left to right
+        // start at j = 1 because the first row cant slide down
+        for (var j = 1; j < this.grid.length; j++) {
+            for (var i = 0; i < this.grid[j].length; i++) {
+
+                // only move if there is a peice
+                if (this.grid[i][j] > 0) {
+                    movedPeices += this.slideTile([0, -1], i, j);
+                }
+            }
+        }
+
+        // return false if no peices were moved so that we dont create a new tile
+        return movedPeices > 0;
+    };
+
+    Board.prototype.handleKeys = function() {
+        if (keys[UP]) {
+
+            if (this.canSlide) {
+                this.canSlide = false;
+                if (this.slideUp()) {
+                    this.newTile();
+                }
+            }
+        } else if (keys[LEFT]) {
+            if (this.canSlide) {
+                this.canSlide = false;
+                if (this.slideLeft()) {
+                    this.newTile();
+                }
+            }
+        } else if (keys[RIGHT]) {
+            if (this.canSlide) {
+                this.canSlide = false;
+                if (this.slideRight()) {
+                    this.newTile();
+                }
+            }
+        } else if (keys[DOWN]) {
+            if (this.canSlide) {
+                this.canSlide = false;
+                if (this.slideDown()) {
+                    this.newTile();
+                }
+            }
+        } else {
+            this.canSlide = true;
+        }
+    };
+
+    Board.prototype.update = function() {
+        this.newTiles = [];
+
+        this.handleKeys();
+
+    };
+
+    Board.prototype.run = function() {
+        this.update();
+        this.display();
+    };
+    
+    // return an instance of the board object type
+    return new Board();
+})();
+
+// animations of peices moving
+//  list of starts and targets
+//  some sort of non-linear interpolation
+//  if a square is marked as a target here, it wont be drawn on the main board
+//  also draws ¿bulging? new squares
+
+var animations = (function() {
+    var Animations = function() {
+        this.animations = [];
+        this.Animation = (function() {
+            var Animation = function(config) {
+
+                this.type = config.type;
+                this.time = 0;
+
+                if (config.target !== undefined) {
+                    this.target = config.target;
+                    this.start = config.start;
+                } else {
+                    this.position = config.position;
+                }
+
+                this.done = false;
+            };
+
+            Animation.prototype.displayTile = function(i, j, x, y) {
+                noStroke();
+        
+                // var x = j * (board.tileSize) + board.boardX + board.tileSize * 0.1;
+                // var y = i * (board.tileSize) + board.boardY + board.tileSize * 0.1;
+                
+                var w = board.tileSize * 0.8;
+                var h = w;
+                
+                fill(board.grid[i][j] <= 8192 ? colors[board.grid[i][j]]:color(255));
+                rect(
+                    x, y, w, h, 5
+                );
+                
+                if (board.grid[i][j] > 0) {
+                    textAlign(CENTER, CENTER);
+                    fill(0);
+                    textFont(IMPACT, CONSTRAINIG_DIMENSION/34.84);
+                    text(board.grid[i][j], x + w/2, y + h/2);
+                }
+            }; 
+
+            Animation.prototype.slide = function(t) {
+                return t;
+            };
+
+            Animation.prototype.bloop = function(t) {
+                return 1 - abs(cos(t * PI));
+            };
+
+            Animation.prototype.display = function() {
+                
+                switch(this.type) {
+                case "slide":
+
+                    // calculate where to show the tile
+                    var i = this.target[0], j = this.target[1];
+
+                    var strtI = this.start[0], strtJ = this.start[1];
+
+                    var tarX = j * (board.tileSize) + board.boardX + board.tileSize * 0.1,
+                        tarY = i * (board.tileSize) + board.boardY + board.tileSize * 0.1;
+
+                    var strtX = strtJ * (board.tileSize) + board.boardX + board.tileSize * 0.1,
+                        strtY = strtI * (board.tileSize) + board.boardY + board.tileSize * 0.1;
+
+                    var amt = this.slide(this.time);
+
+                    var x = lerp(strtX, tarX, amt);
+                    var y = lerp(strtY, tarY, amt);
+
+                    pushMatrix();
+
+                    translate(  
+                            x,
+                            y
+                        );
+                    this.displayTile(i, j, 0, 0);
+                    popMatrix();
+                    break;
+                }
+            };
+
+            Animation.prototype.update = function() {
+                this.time += (1/8);
+                this.time = min(this.time, 1);
+                if (this.time >= 1) {
+                    this.done = true;
+                }
+            };
+
+            Animation.prototype.run = function() {
+                this.update();
+                this.display();
+            }
+
+            return Animation;
+        })();
+    }
+
+    Animations.prototype.run = function() {
+
+        // loop through all of the animations, remove it if it is done
+        for (var i = this.animations.length - 1; i >= 0; i--) {
+            this.animations[i].run();
+            if (this.animations[i].done) {
+                this.animations.splice(i, 1);
+            }
+        }
+    };
+
+    Animations.prototype.isTileAnimated = function(k, j) {
+        for (var i in this.animations) {
+            if (this.animations[i].type === "slide") {
+                return +this.animations[i].target[0] === +k && +this.animations[i].target[1] === +j;
+            } else {
+                return +this.animations[i].position[0] === +k && +this.animations[i].position[1] === +j;
+            }
+        }
+
+        return false;
+    };
+
+    Animations.prototype.none = function() {
+        return this.animations.length <= 0;
+    };
+
+    Animations.prototype.add = function(config) {
+        this.animations.push(new this.Animation(config));
+    };
+
+    return new Animations();
+})();
+
+board.newTile();
+
+// test:
+// board.grid[0][0] = 2;
+// board.grid[0][1] = 2;
+// board.grid[0][2] = 4;
+// board.grid[0][3] = 4;
+// use left arrow
+// expected output: 4, 8
+
+// test:
+// board.grid[0][0] = 2;
+// board.grid[0][1] = 2;
+// board.grid[0][2] = 2;
+// board.grid[0][3] = 2;
+// use left arrow
+// expected output: 4, 2
+
+draw = function() {
+    background(255);
+    board.run(); 
+    animations.run();
+}
+
+keyPressed = function() {
+
+    keys[keyCode] = keys[key.toString()] = true;
+
+}
+
+keyReleased = function() {
+
+    keys[keyCode] = keys[key.toString()] = false;
+
+}
+
+
+};
+
+};
+var canvas = document.querySelector("#mycanvas"); 
+var processingInstance = new Processing(canvas, programCode);}
+
+main();
+    </script>
+    <script></script>
+</html> 
