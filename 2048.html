@@ -42,6 +42,7 @@ var CONSTRAINIG_DIMENSION = min(width, height);
 
 var keys = {};
 
+// make a function to automatically generate this based on different start, intermediate, and end colors
 var colors = {
     "0":    color(255),
     "2": -14236,
@@ -199,7 +200,7 @@ var board = (function() {
         
         for (var i in this.grid) {
             for (var j in this.grid[i]) {
-                if (!animations.isTileAnimated(i, j)) {
+                if (this.grid[i][j] > 0 && !animations.isTileAnimated(i, j)) {
                     this.displayTile(i, j);
                 } else {
                     this.displayTile(i, j, true);
@@ -244,28 +245,50 @@ var board = (function() {
             ){
 
             // set the spot that the tile is sliding to to twice the value of the tile, but only if a tile hasnt combined there yet
-            // println();
+
             if (!this.newTiles.includes((destination[0] + direc[0]) + "" + (destination[1] + direc[1]))) {
+
+                // set the spot of the combination to double its original value
                 this.grid[destination[0] + direc[0]][destination[1] + direc[1]] = g << 1;
+
+                // mark this spot as having been merged on so that newly merged tiles dont merge again
                 this.newTiles.push((destination[0] + direc[0]) + "" + (destination[1] + direc[1]));
+
+                // record the destination (used by the animation)
                 finalDestination = [destination[0] + direc[0], destination[1] + direc[1]];
+
+                // this is so that the tile dosent dissapear during animation if another tile is merging into it
+                animations.add({
+                    start: finalDestination,
+                    target: finalDestination,
+                    type: "slide",
+                    value: g,
+                });
+
             } else {
+                // set the spot that the tile is sliding to to the value of the tile
                 this.grid[destination[0]][destination[1]] = g;
+
+                // record the destination (used by the animation)
                 finalDestination = [destination[0], destination[1]];
             }
         } else {
             // set the spot that the tile is sliding to to the value of the tile
             this.grid[destination[0]][destination[1]] = g;
+            
+            // record the destination (used by the animation)
             finalDestination = [destination[0], destination[1]];
         }
 
         // if the peice even moved
         if (this.grid[i][j] === 0) {
+            
             // add the animation of the sliding
             animations.add({
                 start: [i, j],
                 target: finalDestination,
                 type: "slide",
+                value: g,
             });
             // peice moved
             return 1;
@@ -387,7 +410,7 @@ var board = (function() {
             if (this.canSlide) {
                 this.canSlide = false;
                 if (this.slideDown()) {
-                    this.newTile();
+                    // this.newTile();
                 }
             }
         } else {
@@ -417,15 +440,24 @@ var board = (function() {
 //  if a square is marked as a target here, it wont be drawn on the main board
 //  also draws ¿bulging? new squares
 
+// problems:
+//  creation of new squares happens at the start of the other animations instead of after.
 var animations = (function() {
     var Animations = function() {
         this.animations = [];
         this.Animation = (function() {
             var Animation = function(config) {
 
+
+
                 this.type = config.type;
+
+                // goes from 0 to 1, used to determine how far along the animation is
                 this.time = 0;
 
+                this.value = config.value;
+
+                // make different variables for different animations
                 if (config.target !== undefined) {
                     this.target = config.target;
                     this.start = config.start;
@@ -433,28 +465,41 @@ var animations = (function() {
                     this.position = config.position;
                 }
 
+
+
+                // when true, the animation is removed
                 this.done = false;
             };
 
-            Animation.prototype.displayTile = function(i, j, x, y) {
+            Animation.prototype.displayTile = function(i, j, x, y, value) {
+                if (value === undefined) {
+                    println("error: please use a value when calling Animation.displayTile");
+                }
                 noStroke();
-        
-                // var x = j * (board.tileSize) + board.boardX + board.tileSize * 0.1;
-                // var y = i * (board.tileSize) + board.boardY + board.tileSize * 0.1;
                 
+                // width and height of the tile
                 var w = board.tileSize * 0.8;
                 var h = w;
+
+                var color1 = board.grid[i][j] <= 8192 ? colors[board.grid[i][j]]:color(255);
+                var color2 = value <= 8192 ? colors[value]:color(255);
+
+                var lerpedCol = lerpColor(color2, color1, this.time);
                 
-                fill(board.grid[i][j] <= 8192 ? colors[board.grid[i][j]]:color(255));
+                // tile color
+                fill(lerpedCol);
+
+                // draw the tile
                 rect(
                     x, y, w, h, 5
                 );
                 
-                if (board.grid[i][j] > 0) {
+                // display the number
+                if (value > 0) {
                     textAlign(CENTER, CENTER);
                     fill(0);
                     textFont(IMPACT, CONSTRAINIG_DIMENSION/34.84);
-                    text(board.grid[i][j], x + w/2, y + h/2);
+                    text((value), x + w/2, y + h/2);
                 }
             }; 
 
@@ -493,7 +538,7 @@ var animations = (function() {
                             x,
                             y
                         );
-                    this.displayTile(i, j, 0, 0);
+                    this.displayTile(i, j, 0, 0, this.value);
                     popMatrix();
                     break;
                 }
@@ -528,15 +573,19 @@ var animations = (function() {
     };
 
     Animations.prototype.isTileAnimated = function(k, j) {
+
+        var yes = false;
+
         for (var i in this.animations) {
             if (this.animations[i].type === "slide") {
-                return +this.animations[i].target[0] === +k && +this.animations[i].target[1] === +j;
+                if (+this.animations[i].target[0] === +k && +this.animations[i].target[1] === +j) {
+                    yes = true;
+                }
             } else {
                 return +this.animations[i].position[0] === +k && +this.animations[i].position[1] === +j;
             }
         }
-
-        return false;
+        return yes;
     };
 
     Animations.prototype.none = function() {
@@ -550,7 +599,7 @@ var animations = (function() {
     return new Animations();
 })();
 
-board.newTile();
+// board.newTile();
 
 // test:
 // board.grid[0][0] = 2;
@@ -567,6 +616,11 @@ board.newTile();
 // board.grid[0][3] = 2;
 // use left arrow
 // expected output: 4, 2
+
+board.grid[0][0] = 2;
+board.grid[0][1] = 0;
+board.grid[0][2] = 2;
+board.grid[0][3] = 2;
 
 draw = function() {
     background(255);
