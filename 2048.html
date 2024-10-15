@@ -44,7 +44,7 @@ var keys = {};
 
 // make a function to automatically generate this based on different start, intermediate, and end colors
 var colors = {
-    "0":    color(255),
+    "0": color(255),
     "2": -14236,
     "4": -3753902,
     "8": -7427776,
@@ -153,6 +153,11 @@ var board = (function() {
         // change it to four or two
         if (chosenTile !== undefined) {
             this.grid[chosenTile[0]][chosenTile[1]] = random() < 0.9 ? 2 : 4;
+            animations.add({
+                position: [chosenTile[0], chosenTile[1]],
+                type: "bloop",
+                value: this.grid[chosenTile[0]][chosenTile[1]],
+            });
         }
     };
     
@@ -176,7 +181,7 @@ var board = (function() {
         if (this.grid[i][j] > 0 && !white) {
             textAlign(CENTER, CENTER);
             fill(0);
-            textFont(IMPACT, CONSTRAINIG_DIMENSION/34.84);
+            textFont(IMPACT, this.tileSize/6.097);
             text(this.grid[i][j], x + w/2, y + h/2);
         }
     };
@@ -263,6 +268,12 @@ var board = (function() {
                     target: finalDestination,
                     type: "slide",
                     value: g,
+                });
+
+                animations.add({
+                    position: finalDestination,
+                    type: "bloop",
+                    value: g << 1,
                 });
 
             } else {
@@ -410,7 +421,7 @@ var board = (function() {
             if (this.canSlide) {
                 this.canSlide = false;
                 if (this.slideDown()) {
-                    // this.newTile();
+                    this.newTile();
                 }
             }
         } else {
@@ -421,7 +432,9 @@ var board = (function() {
     Board.prototype.update = function() {
         this.newTiles = [];
 
-        this.handleKeys();
+        if (animations.none()) {
+            this.handleKeys();
+        }
 
     };
 
@@ -440,17 +453,23 @@ var board = (function() {
 //  if a square is marked as a target here, it wont be drawn on the main board
 //  also draws ¿bulging? new squares
 
-// problems:
-//  creation of new squares happens at the start of the other animations instead of after.
 var animations = (function() {
     var Animations = function() {
+
+        var SPEED = 1/8;
+
+        this.speed = SPEED;
         this.animations = [];
         this.Animation = (function() {
             var Animation = function(config) {
 
-
-
                 this.type = config.type;
+
+                this.speed = animations.speed;
+
+                if (this.type === "bloop") {
+                    this.speed *= 0.5;
+                }
 
                 // goes from 0 to 1, used to determine how far along the animation is
                 this.time = 0;
@@ -541,11 +560,33 @@ var animations = (function() {
                     this.displayTile(i, j, 0, 0, this.value);
                     popMatrix();
                     break;
+
+                case "bloop":
+
+                    if (this.time >= 0.5) {
+                        var amt = this.bloop(this.time * 2 - 1);
+
+                        var i = this.position[0];
+                        var j = this.position[1];
+
+                        var x = j * (board.tileSize) + board.boardX + board.tileSize * 0.1,
+                            y = i * (board.tileSize) + board.boardY + board.tileSize * 0.1;
+
+                        pushMatrix();
+                        translate(x + board.tileSize/2, y + board.tileSize/2);
+                        scale(1 + amt/5);
+
+                        this.displayTile(i, j, -board.tileSize/2, -board.tileSize/2, this.value);
+
+                        popMatrix();
+                    }
+                    
+                    break;
                 }
             };
 
             Animation.prototype.update = function() {
-                this.time += (1/8);
+                this.time += this.speed;
                 this.time = min(this.time, 1);
                 if (this.time >= 1) {
                     this.done = true;
@@ -555,11 +596,11 @@ var animations = (function() {
             Animation.prototype.run = function() {
                 this.update();
                 this.display();
-            }
+            };
 
             return Animation;
         })();
-    }
+    };
 
     Animations.prototype.run = function() {
 
@@ -576,20 +617,29 @@ var animations = (function() {
 
         var yes = false;
 
+        // loop through all of the animations, and see if any of them are at the i, j square
         for (var i in this.animations) {
             if (this.animations[i].type === "slide") {
                 if (+this.animations[i].target[0] === +k && +this.animations[i].target[1] === +j) {
                     yes = true;
                 }
             } else {
-                return +this.animations[i].position[0] === +k && +this.animations[i].position[1] === +j;
+                if (+this.animations[i].position[0] === +k && +this.animations[i].position[1] === +j) {
+                    yes = true;
+                }
             }
         }
         return yes;
     };
 
+    // if there are no slide animations return true
     Animations.prototype.none = function() {
-        return this.animations.length <= 0;
+        for (var i in this.animations) {
+            if (this.animations[i].type === "slide") {
+                return false;
+            }
+        }
+        return true;
     };
 
     Animations.prototype.add = function(config) {
@@ -599,7 +649,7 @@ var animations = (function() {
     return new Animations();
 })();
 
-// board.newTile();
+board.newTile();
 
 // test:
 // board.grid[0][0] = 2;
@@ -617,29 +667,23 @@ var animations = (function() {
 // use left arrow
 // expected output: 4, 2
 
-board.grid[0][0] = 2;
-board.grid[0][1] = 0;
-board.grid[0][2] = 2;
-board.grid[0][3] = 2;
-
 draw = function() {
     background(255);
     board.run(); 
     animations.run();
-}
+};
 
 keyPressed = function() {
 
     keys[keyCode] = keys[key.toString()] = true;
 
-}
+};
 
 keyReleased = function() {
 
     keys[keyCode] = keys[key.toString()] = false;
 
-}
-
+};
 
 };
 
