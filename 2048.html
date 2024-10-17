@@ -35,12 +35,13 @@ with (processingInstance) {
 var IMPACT = createFont("impact");
 
 smooth();
-frameRate(60);
+frameRate(0);
 size(window.innerWidth, window.innerHeight, P2D);
 
 var CONSTRAINIG_DIMENSION = min(width, height);
 
 var keys = {};
+var __frameRate = 60;
 
 var getColors = function(mode) {
     switch(mode) {
@@ -173,6 +174,10 @@ var board = (function() {
 
         this.canSlide = false;
     };
+
+    Board.prototype.noAllowableMoves = function() {
+
+    };
     
     Board.prototype.newTile = function() {
 
@@ -209,7 +214,7 @@ var board = (function() {
         }
     };
     
-    Board.prototype.displayTile = function(i, j, white, x, y, value) {
+    Board.prototype.displayTile = function(i, j, white, x, y, value, _color) {
         noStroke();
         
         if (x === undefined) {
@@ -219,8 +224,13 @@ var board = (function() {
         
         var w = this.tileSize * this.tileDisplayScale;
         var h = w;
-        
-        fill(this.grid[i][j] <= 4096 ? colors[this.grid[i][j]]:color(100));
+
+        if (_color === undefined) {
+            fill(this.grid[i][j] <= 4096 ? colors[this.grid[i][j]]:color(100));
+        } else {
+            fill(_color);
+        }
+
         if (white) {
             fill(255);
         }
@@ -282,7 +292,7 @@ var board = (function() {
         return this.findSlideDestination(direc, pos);
     };
 
-    Board.prototype.slideTile = function(direc, i, j) {
+    Board.prototype.slideTile = function(direc, i, j, dontActuallyMove) {
 
         // save the value of the square to be moved
         var g = this.grid[i][j];
@@ -506,9 +516,7 @@ var board = (function() {
 var animations = (function() {
     var Animations = function() {
 
-        var SPEED = 1/8;
-
-        this.speed = SPEED;
+        this.speed = __frameRate/480;
         this.animations = [];
         this.Animation = (function() {
             var Animation = function(config) {
@@ -570,13 +578,20 @@ var animations = (function() {
                     var x = lerp(strtX, tarX, amt);
                     var y = lerp(strtY, tarY, amt);
 
+                    // lerp between color of sliding tile and merging tile. if the tile is not merging, it will lerp between the same two colors making the color not change at all.
+                    var c1 = board.grid[i][j] <= 4096 ? colors[board.grid[i][j]]:color(100);
+                    var c2 = this.value <= 4096 ? colors[this.value]:color(100);
+
+                    // messed up the order but am too lazy to fix it up there ^^^
+                    var c3 = lerpColor(c2, c1, amt);
+
                     pushMatrix();
 
                     translate(  
                             x,
                             y
                         );
-                    board.displayTile(i, j, false, 0, 0, this.value);
+                    board.displayTile(i, j, false, 0, 0, this.value, c3);
                     popMatrix();
                     break;
 
@@ -622,6 +637,9 @@ var animations = (function() {
     };
 
     Animations.prototype.run = function() {
+
+        // update the speed of the animations based on the frame rate
+        this.speed = 1/8 * 60/__frameRate;
 
         // loop through all of the animations, remove it if it is done
         for (var i = this.animations.length - 1; i >= 0; i--) {
@@ -709,6 +727,8 @@ board.newTile();
 // board.grid[3][0] = 8192<<3;
 
 draw = function() {
+    __frameRate = this.__frameRate;
+
     background(255);
     board.run(); 
     animations.run();
