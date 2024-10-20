@@ -176,7 +176,7 @@ var board = (function() {
     };
 
     Board.prototype.noAllowableMoves = function() {
-
+        return (!this.slideRight(true) && !this.slideLeft(true) && !this.slideUp(true) && !this.slideDown(true));
     };
     
     Board.prototype.newTile = function() {
@@ -279,7 +279,6 @@ var board = (function() {
 
         // if we run into an invalid spot, the spot before is the target
         if (!miscFunctions.indexInArray(this.grid, pos[0], pos[1]) || (this.grid[pos[0]][pos[1]] !== 0)) {
-
             // return the spot before the invalid spot
             return [pos[0] - direc[0], pos[1] - direc[1]];
         }
@@ -294,25 +293,31 @@ var board = (function() {
 
     Board.prototype.slideTile = function(direc, i, j, dontActuallyMove) {
 
+
+
         // save the value of the square to be moved
         var g = this.grid[i][j];
         this.grid[i][j] = 0;
+    
 
         // find availible spot using recursive functions
 
         var destination = this.findSlideDestination(direc, [i, j]);
         var finalDestination = [];
 
+        if (dontActuallyMove) {
+            this.grid[i][j] = g;
+        }
+
         // check if the tile can combine w/ the tile infront of it
         if (
                 miscFunctions.indexInArray(this.grid, destination[0] + direc[0], destination[1] + direc[1]) && 
-                this.grid[destination[0] + direc[0]] [destination[1] + direc[1]] === g
+                this.grid[destination[0] + direc[0]] [destination[1] + direc[1]] === g 
+                && /* set the spot that the tile is sliding to to twice the value of the tile, but only if a tile hasnt combined there yet*/
+                !this.newTiles.includes((destination[0] + direc[0]) + "" + (destination[1] + direc[1]))
             ){
 
-            // set the spot that the tile is sliding to to twice the value of the tile, but only if a tile hasnt combined there yet
-
-            if (!this.newTiles.includes((destination[0] + direc[0]) + "" + (destination[1] + direc[1]))) {
-
+            if (!dontActuallyMove) {
                 // set the spot of the combination to double its original value
                 this.grid[destination[0] + direc[0]][destination[1] + direc[1]] = g << 1;
 
@@ -321,38 +326,40 @@ var board = (function() {
 
                 // record the destination (used by the animation)
                 finalDestination = [destination[0] + direc[0], destination[1] + direc[1]];
-
-                // this is so that the tile dosent dissapear during animation if another tile is merging into it
-                animations.add({
-                    start: finalDestination,
-                    target: finalDestination,
-                    type: "slide",
-                    value: g,
-                });
-
-                animations.add({
-                    position: finalDestination,
-                    type: "bloop",
-                    value: g << 1,
-                });
-
             } else {
+                return 1;
+            }
+
+            // this is so that the tile dosent dissapear during animation if another tile is merging into it
+            animations.add({
+                start: finalDestination,
+                target: finalDestination,
+                type: "slide",
+                value: g,
+            });
+
+            // this is the bloop animation
+            animations.add({
+                position: finalDestination,
+                type: "bloop",
+                value: g << 1,
+            });
+
+
+        } else {
+            if (!dontActuallyMove) {
                 // set the spot that the tile is sliding to to the value of the tile
                 this.grid[destination[0]][destination[1]] = g;
-
+                
                 // record the destination (used by the animation)
                 finalDestination = [destination[0], destination[1]];
+            } else if (this.grid[destination[0]][destination[1]] !== g) {
+                return 1;
             }
-        } else {
-            // set the spot that the tile is sliding to to the value of the tile
-            this.grid[destination[0]][destination[1]] = g;
-            
-            // record the destination (used by the animation)
-            finalDestination = [destination[0], destination[1]];
         }
 
         // if the peice even moved
-        if (this.grid[i][j] === 0) {
+        if (this.grid[i][j] === 0 && !dontActuallyMove) {
             
             // add the animation of the sliding
             animations.add({
@@ -370,7 +377,7 @@ var board = (function() {
         return 0;
     };
 
-    Board.prototype.slideUp = function() {
+    Board.prototype.slideUp = function(dontActuallyMove) {
 
         // the number of peices that were moved
         var movedPeices = 0;
@@ -382,7 +389,7 @@ var board = (function() {
 
                 // only move if there is a peice
                 if (this.grid[i][j] > 0) {
-                    movedPeices += this.slideTile([-1, 0], i, j);
+                    movedPeices += this.slideTile([-1, 0], i, j, dontActuallyMove);
                 }
             }
         }
@@ -391,7 +398,7 @@ var board = (function() {
         return movedPeices > 0;
     };
 
-    Board.prototype.slideDown = function() {
+    Board.prototype.slideDown = function(dontActuallyMove) {
 
         // the number of peices that were moved
         var movedPeices = 0;
@@ -403,7 +410,7 @@ var board = (function() {
 
                 // only move if there is a peice
                 if (this.grid[i][j] > 0) {
-                    movedPeices += this.slideTile([1, 0], i, j);
+                    movedPeices += this.slideTile([1, 0], i, j, dontActuallyMove);
                 }
             }
         }
@@ -412,7 +419,7 @@ var board = (function() {
         return movedPeices > 0;
     };
 
-    Board.prototype.slideRight = function() {
+    Board.prototype.slideRight = function(dontActuallyMove) {
 
         // the number of peices that were moved
         var movedPeices = 0;
@@ -424,7 +431,7 @@ var board = (function() {
 
                 // only move if there is a peice
                 if (this.grid[i][j] > 0) {
-                    movedPeices += this.slideTile([0, 1], i, j);
+                    movedPeices += this.slideTile([0, 1], i, j, dontActuallyMove);
                 }
             }
         }
@@ -433,7 +440,7 @@ var board = (function() {
         return movedPeices > 0;
     };
 
-    Board.prototype.slideLeft = function() {
+    Board.prototype.slideLeft = function(dontActuallyMove) {
 
         // the number of peices that were moved
         var movedPeices = 0;
@@ -445,7 +452,7 @@ var board = (function() {
 
                 // only move if there is a peice
                 if (this.grid[i][j] > 0) {
-                    movedPeices += this.slideTile([0, -1], i, j);
+                    movedPeices += this.slideTile([0, -1], i, j, dontActuallyMove);
                 }
             }
         }
@@ -494,8 +501,10 @@ var board = (function() {
 
         if (true) {
             this.handleKeys();
+            if (this.noAllowableMoves()) {
+                println("u lost");
+            }
         }
-
     };
 
     Board.prototype.run = function() {
@@ -725,6 +734,9 @@ board.newTile();
 // board.grid[3][2] = 8192<<1;
 // board.grid[3][1] = 8192<<2;
 // board.grid[3][0] = 8192<<3;
+
+
+
 
 draw = function() {
     __frameRate = this.__frameRate;
