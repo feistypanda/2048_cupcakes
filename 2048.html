@@ -43,6 +43,11 @@ var CONSTRAINIG_DIMENSION = min(width, height);
 var keys = {};
 var __frameRate = 60;
 
+var game_over = false;
+
+// for each tile: score += floor(tileValue * (tileValue/8))
+var score = 0;
+
 var getColors = function(mode) {
     switch(mode) {
     case "vibrant":
@@ -133,9 +138,11 @@ var board = (function() {
     
     // number of squares in grid
     var GRID_SIZE = 4;
+
+    var BOARD_SIZE = 0.3;
     
     // how big are the squares?
-    var TILE_SIZE = CONSTRAINIG_DIMENSION * 0.7 / GRID_SIZE;
+    var TILE_SIZE = CONSTRAINIG_DIMENSION * (1 - BOARD_SIZE) / GRID_SIZE;
     
     // create an object type for the board
     var Board = function() {
@@ -163,16 +170,31 @@ var board = (function() {
         this.newTiles = [];
         
         this.tileSize = TILE_SIZE;
+
+        this.boardSize = BOARD_SIZE;
         
-        this.boardX = CONSTRAINIG_DIMENSION * 0.15 + (width - CONSTRAINIG_DIMENSION)/2;
-        this.boardY = CONSTRAINIG_DIMENSION * 0.15;
+        this.boardX = CONSTRAINIG_DIMENSION * (BOARD_SIZE)/2 + (width - CONSTRAINIG_DIMENSION)/2;
+        this.boardY = CONSTRAINIG_DIMENSION * (BOARD_SIZE)/1.1;
 
         this.tileDisplayScale = 0.9;
         
-        this.boardW = CONSTRAINIG_DIMENSION - CONSTRAINIG_DIMENSION * 0.3;
-        this.boardH = CONSTRAINIG_DIMENSION - CONSTRAINIG_DIMENSION * 0.3;
+        this.boardW = CONSTRAINIG_DIMENSION - CONSTRAINIG_DIMENSION * (BOARD_SIZE);
+        this.boardH = CONSTRAINIG_DIMENSION - CONSTRAINIG_DIMENSION * (BOARD_SIZE);
 
         this.canSlide = false;
+    };
+
+    Board.prototype.calcScore = function() {
+        var score = 0;
+
+        for (var i in this.grid){
+            for (var j in this.grid[i]) {
+                var val = this.grid[i][j];
+                score += floor(val * (val/8));
+            }
+        }
+
+        return score;
     };
 
     Board.prototype.noAllowableMoves = function() {
@@ -212,6 +234,14 @@ var board = (function() {
                 value: this.grid[chosenTile[0]][chosenTile[1]],
             });
         }
+
+        // check for losing
+        if (this.noAllowableMoves()) {
+            println("u lost");
+        }
+
+        // calc score
+        score = this.calcScore();
     };
     
     Board.prototype.displayTile = function(i, j, white, x, y, value, _color) {
@@ -312,8 +342,7 @@ var board = (function() {
         // check if the tile can combine w/ the tile infront of it
         if (
                 miscFunctions.indexInArray(this.grid, destination[0] + direc[0], destination[1] + direc[1]) && 
-                this.grid[destination[0] + direc[0]] [destination[1] + direc[1]] === g 
-                && /* set the spot that the tile is sliding to to twice the value of the tile, but only if a tile hasnt combined there yet*/
+                this.grid[destination[0] + direc[0]] [destination[1] + direc[1]] === g && /* set the spot that the tile is sliding to to twice the value of the tile, but only if a tile hasnt combined there yet*/
                 !this.newTiles.includes((destination[0] + direc[0]) + "" + (destination[1] + direc[1]))
             ){
 
@@ -463,7 +492,6 @@ var board = (function() {
 
     Board.prototype.handleKeys = function() {
         if (keys[UP]) {
-
             if (this.canSlide) {
                 this.canSlide = false;
                 if (this.slideUp()) {
@@ -499,12 +527,7 @@ var board = (function() {
     Board.prototype.update = function() {
         this.newTiles = [];
 
-        if (true) {
-            this.handleKeys();
-            if (this.noAllowableMoves()) {
-                println("u lost");
-            }
-        }
+        this.handleKeys();
     };
 
     Board.prototype.run = function() {
@@ -697,6 +720,8 @@ var animations = (function() {
 
 board.newTile();
 
+{
+
 // test:
 // board.grid[0][0] = 2;
 // board.grid[0][1] = 2;
@@ -734,9 +759,7 @@ board.newTile();
 // board.grid[3][2] = 8192<<1;
 // board.grid[3][1] = 8192<<2;
 // board.grid[3][0] = 8192<<3;
-
-
-
+}// tests
 
 draw = function() {
     __frameRate = this.__frameRate;
@@ -744,6 +767,26 @@ draw = function() {
     background(255);
     board.run(); 
     animations.run();
+
+    {
+    fill(colors.board);
+    noStroke();
+
+    var x = board.boardX - board.tileSize * ((1 - board.tileDisplayScale)/2);
+    var w = board.boardW + board.tileSize * ((1 - board.tileDisplayScale));
+    var y = CONSTRAINIG_DIMENSION * (board.boardSize/1.5) - CONSTRAINIG_DIMENSION * (board.boardSize/1.6);
+
+    var h = (CONSTRAINIG_DIMENSION * (board.boardSize/1.2) - y*1.5) * (2.5/4);
+
+    rect(x, y, w/2 - y, h, 5);
+    rect(x + w/2 + y, y, w/2 - y, h, 5);
+    fill(0);
+    textFont(IMPACT, CONSTRAINIG_DIMENSION/18.5555556);
+
+    textAlign(CENTER, CENTER);
+
+    text("SCORE: " + score, width/2 + (w/2 - y)/2 + y, h/2 + y);
+    } //thing at top
 };
 
 keyPressed = function() {
