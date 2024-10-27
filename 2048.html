@@ -45,6 +45,8 @@ var __frameRate = 60;
 
 var game_over = false;
 
+var click = false;
+
 // for each tile: score += floor(tileValue * (tileValue/8))
 var score = 0;
 
@@ -131,7 +133,107 @@ var miscFunctions = (function() {
     return new miscFunctions();
 })();
 
-var board, animations;
+var board, animations, buttons;
+
+var buttons = (function() {
+    var Buttons = function() {
+        this.buttons = [];
+        this.Button = (function() {
+            function Button(config) {
+
+                // position & width
+                this.x = config.x;
+                this.y = config.y;
+                this.width = config.width;
+                this.height = config.height;
+
+                // style
+                this.color = config.color;
+                this.stroke = config.stroke || false;
+                this.strokeWeight = config.strokeWeight || false;
+                this.radius = config.radius || 0;
+
+                // text
+                this.font = config.font;
+                this.message = config.message || "no message";
+                this.textSize = config.textSize;
+
+                // other
+                this.onClick = config.onClick || function() {println("no on click function")};
+                this.id = config.id || "";
+            }
+
+            Button.prototype.display = function() {
+                stroke(this.stroke);
+                strokeWeight(this.strokeWeight ? this.strokeWeight : 0.0000000001);
+                fill(this.color);
+                rect(this.x, this.y, this.width, this.height, this.radius);
+                fill(0);
+                textFont(IMPACT);
+                text(this.message, this.x + this.width/2, this.y + this.height/2);
+            };
+            
+
+            Button.prototype.mouseOver = function() {
+                return mouseX > this.x && mouseX < this.x + this.width && mouseY > this.y && mouseY < this.y + this.height;
+            };
+
+            Button.prototype.run = function() {
+                //so some stuff
+                if (click && this.mouseOver()) {
+                    this.onClick();
+                }
+
+                // display
+                this.display();
+            };
+
+            return Button;
+        })();
+    };
+
+    Buttons.prototype.run = function() {
+        for (var i = this.buttons.length - 1; i >= 0; i--) {
+            this.buttons[i].run();
+        }
+    };
+
+    Buttons.prototype.add = function(config) {
+        this.buttons.push(new this.Button(config));
+    };
+
+    Buttons.prototype.getById = function(id) {
+        for(var i in this.buttons) {
+            if (this.buttons[i].id === id) {
+                return this.buttons[i];
+            }
+        }
+    };
+
+    return new Buttons();
+})();
+
+buttons.add({
+    x: 0, y: 0,
+    width: 0, height: 0,
+    color: colors.board,
+    radius: 5,
+    id: "new game",
+    font: IMPACT,
+    textSize: 20,
+    message: "restart",
+});
+
+buttons.add({
+    x: 0, y: 0,
+    width: 0, height: 0,
+    color: colors.board,
+    radius: 5,
+    id: "settings",
+    font: IMPACT,
+    textSize: 20,
+    message: "restart",
+});
 
 // board/grid function
 var board = (function() {
@@ -182,6 +284,29 @@ var board = (function() {
         this.boardH = CONSTRAINIG_DIMENSION - CONSTRAINIG_DIMENSION * (BOARD_SIZE);
 
         this.canSlide = false;
+
+        {
+        
+
+        this.indicatorX = this.boardX - this.tileSize * ((1 - this.tileDisplayScale)/2);
+        this.indicatorW = this.boardW + this.tileSize * ((1 - this.tileDisplayScale));
+        this.indicatorY = CONSTRAINIG_DIMENSION * (this.boardSize/1.5) - CONSTRAINIG_DIMENSION * (this.boardSize/1.6);
+
+        this.indicatorH = (CONSTRAINIG_DIMENSION * (this.boardSize/1.2) - this.indicatorY*1.5) * (2.5/4);
+
+        var btn = buttons.getById("new game");
+        btn.x = this.indicatorX;
+        btn.y = this.indicatorY * 2 + this.indicatorH;
+        btn.width = this.indicatorW/2 - this.indicatorY/2;
+        btn.height = this.indicatorH / (2.5/4) * (1.4/4);
+
+        var btn = buttons.getById("settings");
+        btn.x = this.indicatorX + this.indicatorW/2 + this.indicatorY;
+        btn.y = this.indicatorY * 2 + this.indicatorH;
+        btn.width = this.indicatorW/2 - this.indicatorY/2;
+        btn.height = this.indicatorH / (2.5/4) * (1.4/4);
+
+        } //things at top
     };
 
     Board.prototype.calcScore = function() {
@@ -190,7 +315,7 @@ var board = (function() {
         for (var i in this.grid){
             for (var j in this.grid[i]) {
                 var val = this.grid[i][j];
-                score += floor(val * (val/8));
+                score += floor(val * (val/32));
             }
         }
 
@@ -302,7 +427,22 @@ var board = (function() {
                 }
             }
         }
-        //} tiles    
+        //} tiles
+
+        //{
+
+        fill(colors.board);
+        noStroke();
+
+        rect(this.indicatorX, this.indicatorY, this.indicatorW/2 - this.indicatorY/2, this.indicatorH, 5);
+        rect(this.indicatorX + this.indicatorW/2 + this.indicatorY, this.indicatorY, this.indicatorW/2 - this.indicatorY/2, this.indicatorH, 5);
+        fill(0);
+        textFont(IMPACT, CONSTRAINIG_DIMENSION/18.5555556);
+
+        textAlign(CENTER, CENTER);
+
+        text("SCORE: " + score, width/2 + (this.indicatorW/2 - this.indicatorY)/2 + this.indicatorY, this.indicatorH/2 + this.indicatorY);  
+        //} indicators
     };
 
     Board.prototype.findSlideDestination = function(direc, pos) {
@@ -767,26 +907,13 @@ draw = function() {
     background(255);
     board.run(); 
     animations.run();
+    buttons.run();
 
-    {
-    fill(colors.board);
-    noStroke();
+    click = false;
+};
 
-    var x = board.boardX - board.tileSize * ((1 - board.tileDisplayScale)/2);
-    var w = board.boardW + board.tileSize * ((1 - board.tileDisplayScale));
-    var y = CONSTRAINIG_DIMENSION * (board.boardSize/1.5) - CONSTRAINIG_DIMENSION * (board.boardSize/1.6);
-
-    var h = (CONSTRAINIG_DIMENSION * (board.boardSize/1.2) - y*1.5) * (2.5/4);
-
-    rect(x, y, w/2 - y, h, 5);
-    rect(x + w/2 + y, y, w/2 - y, h, 5);
-    fill(0);
-    textFont(IMPACT, CONSTRAINIG_DIMENSION/18.5555556);
-
-    textAlign(CENTER, CENTER);
-
-    text("SCORE: " + score, width/2 + (w/2 - y)/2 + y, h/2 + y);
-    } //thing at top
+mousePressed = function() {
+    click = true;
 };
 
 keyPressed = function() {
