@@ -41,7 +41,7 @@ size(window.innerWidth, window.innerHeight, P2D);
 var CONSTRAINIG_DIMENSION = min(width, height);
 
 var keys = {};
-var __frameRate = 60;
+var __frameRate = 0;
 
 var game_over = false;
 
@@ -291,31 +291,40 @@ var Board = (function() {
         this.boardY = this.size/1.1;
 
         this.tileDisplayScale = 0.9;
+        this.actualTileSize = this.tileSize * this.tileDisplayScale;
         
-        this.boardW = CONSTRAINIG_DIMENSION - CONSTRAINIG_DIMENSION * (BOARD_SIZE);
-        this.boardH = CONSTRAINIG_DIMENSION - CONSTRAINIG_DIMENSION * (BOARD_SIZE);
+        this.boardW = CONSTRAINIG_DIMENSION - CONSTRAINIG_DIMENSION * BOARD_SIZE;
+        this.boardH = this.boardW;
+
+        // distance petween tiles
+        // this.tileInterval = (this.boardW/(GRID_SIZE) - this.actualTileSize)/1;
+        this.tileInterval = (this.boardW - this.actualTileSize * GRID_SIZE)/(GRID_SIZE + 1)
 
         this.canSlide = false;
 
         {
         
 
-        this.indicatorX = this.boardX - this.tileSize * ((1 - this.tileDisplayScale)/2);
-        this.indicatorW = this.boardW + this.tileSize * ((1 - this.tileDisplayScale));
+        this.indicatorX = this.boardX;
+        this.indicatorW = this.boardW;
         this.indicatorY = CONSTRAINIG_DIMENSION * (this.boardScale/1.5) - CONSTRAINIG_DIMENSION * (this.boardScale/1.6);
 
         this.indicatorH = (CONSTRAINIG_DIMENSION * (this.boardScale/1.2) - this.indicatorY*1.5) * (2.5/4);
 
+        this.indicatorSeperation = CONSTRAINIG_DIMENSION/85.71428571428582 * 0.8;
+        // not horrendous:
+        this.indicatorButtonSeperationY = (this.boardY - (this.indicatorY + this.indicatorH) - this.indicatorH / (2.5/4) * (1.4/4))/2;
+
         var btn = buttons.getById("new game");
         btn.x = this.indicatorX;
-        btn.y = this.indicatorY * 2 + this.indicatorH;
-        btn.width = this.indicatorW/2 - this.indicatorY/2;
+        btn.y = this.indicatorButtonSeperationY + this.indicatorH + this.indicatorY;
+        btn.width = this.indicatorW/2 - this.indicatorSeperation;
         btn.height = this.indicatorH / (2.5/4) * (1.4/4);
 
         var btn = buttons.getById("settings");
-        btn.x = this.indicatorX + this.indicatorW/2 + this.indicatorY;
-        btn.y = this.indicatorY * 2 + this.indicatorH;
-        btn.width = this.indicatorW/2 - this.indicatorY/2;
+        btn.x = this.indicatorX + this.indicatorW/2 + this.indicatorSeperation;
+        btn.y = this.indicatorButtonSeperationY + this.indicatorH + this.indicatorY;
+        btn.width = this.indicatorW/2 - this.indicatorSeperation;
         btn.height = this.indicatorH / (2.5/4) * (1.4/4);
 
         } //things at top
@@ -395,11 +404,11 @@ var Board = (function() {
         noStroke();
         
         if (x === undefined) {
-            var x = j * (this.tileSize) + this.boardX + this.tileSize * ((1 - this.tileDisplayScale)/2);
-            var y = i * (this.tileSize) + this.boardY + this.tileSize * ((1 - this.tileDisplayScale)/2);
+            var x = j * (this.actualTileSize + this.tileInterval) + this.boardX + this.tileInterval;
+            var y = i * (this.actualTileSize + this.tileInterval) + this.boardY + this.tileInterval;
         }
         
-        var w = this.tileSize * this.tileDisplayScale;
+        var w = this.actualTileSize;
         var h = w;
 
         if (_color === undefined) {
@@ -430,10 +439,10 @@ var Board = (function() {
         noStroke();
         
         rect(
-            this.boardX - this.tileSize * ((1 - this.tileDisplayScale)/2),
-            this.boardY - this.tileSize * ((1 - this.tileDisplayScale)/2),
-            this.boardW + this.tileSize * ((1 - this.tileDisplayScale)),
-            this.boardH + this.tileSize * ((1 - this.tileDisplayScale)),
+            this.boardX,
+            this.boardY,
+            this.boardW,
+            this.boardH,
             5
         );
         //} background square
@@ -456,8 +465,8 @@ var Board = (function() {
         fill(colors.board);
         noStroke();
 
-        rect(this.indicatorX, this.indicatorY, this.indicatorW/2 - this.indicatorY/2, this.indicatorH, 5);
-        rect(this.indicatorX + this.indicatorW/2 + this.indicatorY, this.indicatorY, this.indicatorW/2 - this.indicatorY/2, this.indicatorH, 5);
+        rect(this.indicatorX, this.indicatorY, this.indicatorW/2 - this.indicatorSeperation, this.indicatorH, 5);
+        rect(this.indicatorX + this.indicatorW/2 + this.indicatorSeperation, this.indicatorY, this.indicatorW/2 - this.indicatorSeperation, this.indicatorH, 5);
         fill(0);
         textFont(IMPACT, CONSTRAINIG_DIMENSION/18.5555556);
 
@@ -728,7 +737,7 @@ var animations = (function() {
 
                 this.type = config.type;
 
-                this.speed = animations.speed;
+                this.speed = 1/10 * 60/__frameRate;;
 
                 if (this.type === "bloop") {
                     this.speed *= 0.5;
@@ -772,11 +781,11 @@ var animations = (function() {
                     var strtI = this.start[0], strtJ = this.start[1];
 
                     // basically the j position (0 - 3) times the tile size, plus the offset so that board is displayed inbetween the tiles
-                    var tarX = j * (board.tileSize) + board.boardX + board.tileSize * ((1 - board.tileDisplayScale)/2),
-                        tarY = i * (board.tileSize) + board.boardY + board.tileSize * ((1 - board.tileDisplayScale)/2);
+                    var tarX = j * (board.actualTileSize + board.tileInterval) + board.boardX + board.tileInterval;
+                        tarY = i * (board.actualTileSize + board.tileInterval) + board.boardY + board.tileInterval;
 
-                    var strtX = strtJ * (board.tileSize) + board.boardX + board.tileSize * ((1 - board.tileDisplayScale)/2),
-                        strtY = strtI * (board.tileSize) + board.boardY + board.tileSize * ((1 - board.tileDisplayScale)/2);
+                    var strtX = strtJ * (board.actualTileSize + board.tileInterval) + board.boardX + board.tileInterval,
+                        strtY = strtI * (board.actualTileSize + board.tileInterval) + board.boardY + board.tileInterval;
 
                     var amt = this.slide(this.time);
 
@@ -808,14 +817,14 @@ var animations = (function() {
                         var i = this.position[0];
                         var j = this.position[1];
 
-                        var x = j * (board.tileSize) + board.boardX + board.tileSize * ((1 - board.tileDisplayScale)/2),
-                            y = i * (board.tileSize) + board.boardY + board.tileSize * ((1 - board.tileDisplayScale)/2);
+                        var x = j * (board.actualTileSize + board.tileInterval) + board.boardX + board.tileInterval,
+                            y = i * (board.actualTileSize + board.tileInterval) + board.boardY + board.tileInterval;
 
                         pushMatrix();
-                        translate(x + board.tileSize/2, y + board.tileSize/2);
+                        translate(x + board.actualTileSize/2, y + board.actualTileSize/2);
                         scale(1 + amt/8);
 
-                        board.displayTile(i, j, false, -board.tileSize/2, -board.tileSize/2, this.value);
+                        board.displayTile(i, j, false, -board.actualTileSize/2, -board.actualTileSize/2, this.value);
 
                         popMatrix();
                     }
@@ -825,6 +834,7 @@ var animations = (function() {
             };
 
             Animation.prototype.update = function() {
+                
                 this.time += this.speed;
                 this.time = min(this.time, 1);
                 if (this.time >= 1) {
@@ -842,10 +852,7 @@ var animations = (function() {
     };
 
     Animations.prototype.run = function() {
-
-        // update the speed of the animations based on the frame rate
-        this.speed = 1/8 * 60/__frameRate;
-
+        
         // loop through all of the animations, remove it if it is done
         for (var i = this.animations.length - 1; i >= 0; i--) {
             this.animations[i].run();
@@ -936,13 +943,12 @@ board.newTile();
 
 function play() {
     try{
-    background(255);
-    board.run(); 
-    animations.run();
-    buttons.run();
+        background(255);
+        board.run(); 
+        animations.run();
+        buttons.run();
     }catch(e) {
         println(e);
-        println(board.board);
     }
 }
 
