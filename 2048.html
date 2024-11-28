@@ -3,7 +3,7 @@
     <head>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c&family=Rowdies:wght@300;400;700&family=Signika:wght@300..700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Lilita+One&family=Rowdies:wght@300;400;700&family=Rubik+Mono+One&family=Signika:wght@300..700&family=Squada+One&display=swap" rel="stylesheet">
 
 
 
@@ -32,13 +32,13 @@ function main() {
 var programCode = function(processingInstance) {
 with (processingInstance) {
 
-var IMPACT = createFont("impact");
+var IMPACT = createFont("Squada One");
 
 smooth();
 frameRate(0);
 size(window.innerWidth, window.innerHeight, P2D);
 
-var CONSTRAINIG_DIMENSION = min(width, height);
+var CONSTRAINING_DIMENSION = min(width, height);
 
 var keys = {};
 var __frameRate = 0;
@@ -50,6 +50,8 @@ var click = false;
 var score = 0;
 
 var scene = "play";
+
+var introPrecent = 0;
 
 var getColors = function(mode) {
     switch(mode) {
@@ -227,6 +229,7 @@ buttons.add({
     message: "restart",
     onClick: function() {
         board.reset();
+        animations.animations = [];
     },
 });
 
@@ -243,16 +246,12 @@ buttons.add({
         board = createBoard(++GRID_SIZE, BOARD_SIZE);
         if (GRID_SIZE > 5) {
             GRID_SIZE = 2;
-            board = createBoard(GRID_SIZE++, BOARD_SIZE);
+            board = createBoard(GRID_SIZE, BOARD_SIZE);
 
         }
         board.reset();
     }
 });
-
-// fix the board being differnent sizes with diff num of tiles, and fix weird spam settings bugish
-
-// change it so that it calculates the full board size, the actual tile size, and the board x and y at the start and stores it in variables so that it can be used to better display the indicators, and so that the dimensions of stuffs dosent change when the board grid size changes.
 
 // board/grid function
 var Board = (function() {
@@ -285,15 +284,15 @@ var Board = (function() {
         this.tileSize = TILE_SIZE;
 
         this.boardScale = BOARD_SIZE;
-        this.size = CONSTRAINIG_DIMENSION * BOARD_SIZE;
+        this.size = CONSTRAINING_DIMENSION * BOARD_SIZE;
         
-        this.boardX = this.size/2 + (width - CONSTRAINIG_DIMENSION)/2;
+        this.boardX = this.size/2 + (width - CONSTRAINING_DIMENSION)/2;
         this.boardY = this.size/1.1;
 
         this.tileDisplayScale = 0.9;
         this.actualTileSize = this.tileSize * this.tileDisplayScale;
         
-        this.boardW = CONSTRAINIG_DIMENSION - CONSTRAINIG_DIMENSION * BOARD_SIZE;
+        this.boardW = CONSTRAINING_DIMENSION - CONSTRAINING_DIMENSION * BOARD_SIZE;
         this.boardH = this.boardW;
 
         // distance petween tiles
@@ -307,21 +306,23 @@ var Board = (function() {
 
         this.indicatorX = this.boardX;
         this.indicatorW = this.boardW;
-        this.indicatorY = CONSTRAINIG_DIMENSION * (this.boardScale/1.5) - CONSTRAINIG_DIMENSION * (this.boardScale/1.6);
+        this.indicatorY = CONSTRAINING_DIMENSION * (this.boardScale/1.5) - CONSTRAINING_DIMENSION * (this.boardScale/1.6);
 
-        this.indicatorH = (CONSTRAINIG_DIMENSION * (this.boardScale/1.2) - this.indicatorY*1.5) * (2.5/4);
+        this.indicatorH = (CONSTRAINING_DIMENSION * (this.boardScale/1.2) - this.indicatorY*1.5) * (2.5/4);
 
-        this.indicatorSeperation = CONSTRAINIG_DIMENSION/85.71428571428582 * 0.8;
+        this.indicatorSeperation = CONSTRAINING_DIMENSION/85.71428571428582 * 0.8;
         // not horrendous:
         this.indicatorButtonSeperationY = (this.boardY - (this.indicatorY + this.indicatorH) - this.indicatorH / (2.5/4) * (1.4/4))/2;
 
         var btn = buttons.getById("new game");
+        btn.textSize = CONSTRAINING_DIMENSION/20.875;
         btn.x = this.indicatorX;
         btn.y = this.indicatorButtonSeperationY + this.indicatorH + this.indicatorY;
         btn.width = this.indicatorW/2 - this.indicatorSeperation;
         btn.height = this.indicatorH / (2.5/4) * (1.4/4);
 
         var btn = buttons.getById("settings");
+        btn.textSize = CONSTRAINING_DIMENSION/20.875;
         btn.x = this.indicatorX + this.indicatorW/2 + this.indicatorSeperation;
         btn.y = this.indicatorButtonSeperationY + this.indicatorH + this.indicatorY;
         btn.width = this.indicatorW/2 - this.indicatorSeperation;
@@ -468,11 +469,12 @@ var Board = (function() {
         rect(this.indicatorX, this.indicatorY, this.indicatorW/2 - this.indicatorSeperation, this.indicatorH, 5);
         rect(this.indicatorX + this.indicatorW/2 + this.indicatorSeperation, this.indicatorY, this.indicatorW/2 - this.indicatorSeperation, this.indicatorH, 5);
         fill(0);
-        textFont(IMPACT, CONSTRAINIG_DIMENSION/18.5555556);
+        textFont(IMPACT, CONSTRAINING_DIMENSION/18.5555556);
 
         textAlign(CENTER, CENTER);
 
-        text("SCORE: " + score, width/2 + (this.indicatorW/2 - this.indicatorY)/2 + this.indicatorY, this.indicatorH/2 + this.indicatorY);  
+        text("2048", this.indicatorX + (this.indicatorW/2 - this.indicatorSeperation)/2, this.indicatorH/2 + this.indicatorY);
+        text("SCORE: " + score, this.indicatorX + this.indicatorW/2 + this.indicatorSeperation + (this.indicatorW/2 - this.indicatorSeperation)/2, this.indicatorH/2 + this.indicatorY);  
         //} indicators
     };
 
@@ -710,17 +712,6 @@ var Board = (function() {
     return Board;
 })();
 
-function createBoard(GRID_SIZE, BOARD_SIZE) {
-    return new Board(GRID_SIZE, BOARD_SIZE, CONSTRAINIG_DIMENSION * (1 - BOARD_SIZE) / GRID_SIZE);
-}
-
-// number of squares in grid
-var GRID_SIZE = 4;
-
-var BOARD_SIZE = 0.3;
-
-board = createBoard(GRID_SIZE, BOARD_SIZE);
-    
 // animations of peices moving
 //  list of starts and targets
 //  some sort of non-linear interpolation
@@ -898,6 +889,20 @@ var animations = (function() {
     return new Animations();
 })();
 
+function createBoard(GRID_SIZE, BOARD_SIZE) {
+    animations.animations = [];
+    return new Board(GRID_SIZE, BOARD_SIZE, CONSTRAINING_DIMENSION * (1 - BOARD_SIZE) / GRID_SIZE);
+}
+
+// number of squares in grid
+var GRID_SIZE = 4;
+
+var BOARD_SIZE = 0.3;
+
+board = createBoard(GRID_SIZE, BOARD_SIZE);
+    
+
+
 board.newTile();
 
 {
@@ -942,24 +947,30 @@ board.newTile();
 }// tests
 
 function play() {
-    try{
-        background(255);
-        board.run(); 
-        animations.run();
-        buttons.run();
-    }catch(e) {
-        println(e);
-    }
+
+    background(255);
+    board.run(); 
+    animations.run();
+    buttons.run();
+}
+
+function intro() {
+
 }
 
 var scenes = {
     play: play,
+    intro: intro,
 };
 
 draw = function() {
     __frameRate = this.__frameRate;
 
     scenes[scene]();    
+
+    if (introPrecent <= 1) {
+        scenes.intro();
+    }
 
     click = false;
 };
