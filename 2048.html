@@ -34,26 +34,38 @@ with (processingInstance) {
 
 var IMPACT = createFont("Squada One");
 
+var CONSTRAINING_DIMENSION, keys, __frameRate, click, scene, introPrecent, deadAmt, isdead, getColors, colors, miscFunctions, board, animations, buttons, GRID_SIZE, BOARD_SIZE, settingsAmt, createBoard, colorOptions, colorInd, targetSettingsAmt;
+
+function reset() {
+
 smooth();
 frameRate(0);
 size(window.innerWidth, window.innerHeight, P2D);
 
-var CONSTRAINING_DIMENSION = min(width, height);
+textAlign(CENTER, CENTER);
 
-var keys = {};
-var __frameRate = 0;
+CONSTRAINING_DIMENSION = min(width, height);
 
-var game_over = false;
+keys = {};
+__frameRate = 0;
 
-var click = false;
+click = false;
 
-var score = 0;
+score = 0;
 
-var scene = "play";
+scene = "play";
 
-var introPrecent = 0;
+introPrecent = 0;
 
-var getColors = function(mode) {
+deadAmt = -2;
+
+isdead = false;
+
+settingsAmt = 0;
+
+targetSettingsAmt = 0;
+
+getColors = function(mode) {
     switch(mode) {
     case "vibrant":
         return (function() {
@@ -115,10 +127,14 @@ var getColors = function(mode) {
     }
 };
 
-var colors = getColors("virant");
+colorOptions = ["vibrant", "default"];
+
+colorInd = 1;
+
+colors = getColors(colorOptions[colorInd]);
 
 // misc functions
-var miscFunctions = (function() {
+miscFunctions = (function() {
     var miscFunctions = function() {};
     
     miscFunctions.prototype.randArrayElement = function(arr) {
@@ -136,9 +152,8 @@ var miscFunctions = (function() {
     return new miscFunctions();
 })();
 
-var board, animations, buttons;
 
-var buttons = (function() {
+buttons = (function() {
     var Buttons = function() {
         this.buttons = [];
         this.Button = (function() {
@@ -228,8 +243,10 @@ buttons.add({
     textSize: 40,
     message: "restart",
     onClick: function() {
-        board.reset();
-        animations.animations = [];
+        if (targetSettingsAmt === 0) {
+            board.reset();
+            animations.animations = [];
+        }
     },
 });
 
@@ -243,6 +260,48 @@ buttons.add({
     textSize: 40,
     message: "settings",
     onClick: function () {
+        targetSettingsAmt = 1;
+    }
+});
+
+buttons.add({
+    x: 200, y: 200,
+    width: 220, height: 60,
+    color: colors.board,
+    radius: 5,
+    id: "change color",
+    font: IMPACT,
+    textSize: 40,
+    message: "color: " + colorOptions[colorInd],
+    onClick: function () {
+        colorInd ++;
+        if (colorInd >= colorOptions.length) {
+            colorInd = 0;
+        }
+        colors = getColors(colorOptions[colorInd]);
+
+        var btn = buttons.getById("new game");
+
+        btn.color = colors.board;
+        
+        var btn = buttons.getById("settings");
+
+        btn.color = colors.board;
+
+        this.color = colors.board;
+       
+    }
+});
+buttons.add({
+    x: 0, y: 0,
+    width: 0, height: 0,
+    color: colors.board,
+    radius: 5,
+    id: "change board",
+    font: IMPACT,
+    textSize: 40,
+    message: "board size",
+    onClick: function () {
         board = createBoard(++GRID_SIZE, BOARD_SIZE);
         if (GRID_SIZE > 5) {
             GRID_SIZE = 2;
@@ -250,6 +309,19 @@ buttons.add({
 
         }
         board.reset();
+    }
+});
+buttons.add({
+    x: 0, y: 0,
+    width: 0, height: 0,
+    color: colors.board,
+    radius: 5,
+    id: "exit settings",
+    font: IMPACT,
+    textSize: 40,
+    message: "exit",
+    onClick: function () {
+        targetSettingsAmt = 0;
     }
 });
 
@@ -328,6 +400,27 @@ var Board = (function() {
         btn.width = this.indicatorW/2 - this.indicatorSeperation;
         btn.height = this.indicatorH / (2.5/4) * (1.4/4);
 
+        var btn = buttons.getById("change color");
+        btn.textSize = CONSTRAINING_DIMENSION/20.875;
+        btn.x = this.indicatorX - this.indicatorSeperation/2;
+        btn.y = height/2;
+        btn.width = this.indicatorW/2;
+        btn.height = this.indicatorH / (2.5/4) * (1.4/4);
+
+        var btn = buttons.getById("change board");
+        btn.textSize = CONSTRAINING_DIMENSION/20.875;
+        btn.x = this.indicatorX + this.indicatorW/2 + this.indicatorSeperation/2;
+        btn.y = height/2;
+        btn.width = this.indicatorW/2;
+        btn.height = this.indicatorH / (2.5/4) * (1.4/4);
+
+        var btn = buttons.getById("exit settings");
+        btn.textSize = CONSTRAINING_DIMENSION/20.875;
+        btn.x = (2 * this.indicatorX + this.indicatorW/2 + this.indicatorSeperation)/2;
+        btn.y = height/1.6;
+        btn.width = this.indicatorW/2 - this.indicatorSeperation;
+        btn.height = this.indicatorH / (2.5/4) * (1.4/4);
+
         } //things at top
     };
 
@@ -394,7 +487,7 @@ var Board = (function() {
 
         // check for losing
         if (this.noAllowableMoves()) {
-            println("u lost");
+            isdead = true;
         }
 
         // calc score
@@ -699,8 +792,9 @@ var Board = (function() {
 
     Board.prototype.update = function() {
         this.newTiles = [];
-
-        this.handleKeys();
+        if (targetSettingsAmt === 0) {
+            this.handleKeys();
+        }
     };
 
     Board.prototype.run = function() {
@@ -718,7 +812,7 @@ var Board = (function() {
 //  if a square is marked as a target here, it wont be drawn on the main board
 //  also draws ¿bulging? new squares
 
-var animations = (function() {
+animations = (function() {
     var Animations = function() {
 
         this.speed = __frameRate/480;
@@ -889,21 +983,23 @@ var animations = (function() {
     return new Animations();
 })();
 
-function createBoard(GRID_SIZE, BOARD_SIZE) {
+createBoard = function(GRID_SIZE, BOARD_SIZE) {
     animations.animations = [];
     return new Board(GRID_SIZE, BOARD_SIZE, CONSTRAINING_DIMENSION * (1 - BOARD_SIZE) / GRID_SIZE);
 }
 
 // number of squares in grid
-var GRID_SIZE = 4;
+GRID_SIZE = 4;
 
-var BOARD_SIZE = 0.3;
+BOARD_SIZE = 0.3;
 
 board = createBoard(GRID_SIZE, BOARD_SIZE);
-    
-
 
 board.newTile();
+}
+
+reset();
+
 
 {
 
@@ -948,10 +1044,60 @@ board.newTile();
 
 function play() {
 
+    if(isdead) {
+        deadAmt += 0.02;
+        if(deadAmt > 0) {
+            scene = 'dead';
+        }
+    }
+
+    buttons.getById("")
+
     background(255);
+
     board.run(); 
     animations.run();
+
+    fill(0, settingsAmt * 150);
+    rect(0, height/2.5, width, height);
+
     buttons.run();
+
+    fill(0, settingsAmt * 150);
+    rect(0, 0, width, height/2.5);
+
+    settingsAmt = lerp(settingsAmt, targetSettingsAmt, 0.05);
+
+    var btn = buttons.getById("change color");
+    
+    btn.y = lerp(height * 1.1, height/2, settingsAmt);
+    btn.message = "color: " + colorOptions[colorInd];
+
+    var btn = buttons.getById("change board");
+
+    btn.y = lerp(height * 1.1, height/2, settingsAmt);
+    btn.color = colors.board;
+
+    var btn = buttons.getById("exit settings");
+
+    btn.y = lerp(height * 1.1, height/1.6, settingsAmt);
+    btn.color = colors.board;
+}
+
+function dead() {
+    deadAmt = min(deadAmt + 0.002, 1);
+    fill(red(-14236), green(-14236), blue(-14236), 255 * deadAmt);
+    noStroke()
+    rect(0, 0, width, height);
+    fill(255, 255 * deadAmt);
+    textFont(IMPACT, CONSTRAINING_DIMENSION/9.2777);
+    text("YOU DIED D=\nYOUR SCORE WAS " + score, width/2, height/2.2);
+    textFont(IMPACT, CONSTRAINING_DIMENSION/18.554);
+    text("--click to play again--", width/2, height/1.6);
+    if (click) {
+        reset();
+
+    }
 }
 
 function intro() {
@@ -961,6 +1107,7 @@ function intro() {
 var scenes = {
     play: play,
     intro: intro,
+    dead: dead,
 };
 
 draw = function() {
