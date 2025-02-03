@@ -7,24 +7,42 @@
 
 
 
-        <title>2048</title> 
+        <title>2048 [GAME]</title> 
         <style type="text/css">
 
             *{
                 margin: 0px;
                 overflow: hidden;
-            }            
+            }   
+        
             
         </style>
+        
     </head>
     <body>
-        <p align = "center">
-            <canvas id="mycanvas"></canvas> 
-        </p>
+        <canvas id="mycanvas"></canvas> 
+        
     </body>
  
     <script src="https://cdn.jsdelivr.net/processing.js/1.4.8/processing.min.js"></script> 
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <!-- fullscreen made by viciostrex-->
+<script type>
+        
+        function fullScreenIt (){
+            var Window = window.open();
+            Window.document.open();
+            Window.document.write(`
+            <!doctype html>
+                <html>`+
+                    $("html").html()
+                +`</html>        
+                `);
+        };
 
+        
+    </script>
+    
     <script type>
 
 function main() {
@@ -32,15 +50,17 @@ function main() {
 var programCode = function(processingInstance) {
 with (processingInstance) {
 
-var IMPACT = createFont("Squada One");
+var SQUADAONE = createFont("Squada One");
 
-var CONSTRAINING_DIMENSION, keys, __frameRate, click, scene, introPrecent, deadAmt, isdead, getColors, colors, miscFunctions, board, animations, buttons, GRID_SIZE, BOARD_SIZE, settingsAmt, createBoard, colorOptions, colorInd, targetSettingsAmt;
+var CONSTRAINING_DIMENSION, keys, __frameRate, click, scene, introPrecent, deadAmt, isdead, getColors, colors, miscFunctions, board, animations, buttons, GRID_SIZE, BOARD_SIZE, settingsAmt, createBoard, colorOptions, colorInd, targetSettingsAmt, start = false;
 
 function reset() {
 
 smooth();
 frameRate(0);
+console.log(document.querySelector("html").clientWidth);
 size(window.innerWidth, window.innerHeight, P2D);
+console.log(window.innerWidth);
 
 textAlign(CENTER, CENTER);
 
@@ -104,7 +124,26 @@ getColors = function(mode) {
 
     return colors;
 })();
-        // break;
+        break;
+    
+    case "classic": 
+            return {
+        "2": color(238, 228, 218),
+        "4": color(237, 224, 200),
+        "8": color(242, 177, 121),
+        "16": color(245, 149, 99),
+        "32": color(246, 124, 95),
+        "64": color(246, 94, 59),
+        "128": color(237, 207, 114),
+        "256": color(237, 204, 97),
+        "512": color(237, 200, 80),
+        "1024": color(237, 197, 63),
+        "2048": color(237, 194, 46),
+        "4096": color(237, 192, 30),
+        "8192": color(237, 190, 13),
+        board: color(187, 173, 160),
+    };
+    break;
 
     default:
         return {
@@ -127,9 +166,9 @@ getColors = function(mode) {
     }
 };
 
-colorOptions = ["vibrant", "default"];
+colorOptions = ["default", "classic", "vibrant"];
 
-colorInd = 1;
+colorInd = 0;
 
 colors = getColors(colorOptions[colorInd]);
 
@@ -186,11 +225,19 @@ buttons = (function() {
                 stroke(this.stroke);
                 strokeWeight(this.strokeWeight ? this.strokeWeight : 0.0000000001);
                 fill(this.color);
-                rect(this.x, this.y, this.width, this.height, this.radius);
+                pushMatrix();
+                
+                translate(this.x + this.width/2, this.y + this.height/2);
+                if (this.mouseOver()) {
+                    scale(1.05);
+                }
+                rect(-this.width/2, -this.height/2, this.width, this.height, this.radius);
+                
                 fill(0);
-                textFont(IMPACT);
+                textFont(SQUADAONE);
                 textSize(this.textSize);
-                text(this.message, this.x + this.width/2, this.y + this.height/2);
+                text(this.message, 0, 0);
+                popMatrix();
             };
             
 
@@ -234,13 +281,44 @@ buttons = (function() {
 })();
 
 buttons.add({
+    x: width/2 - CONSTRAINING_DIMENSION * (110/600), y: CONSTRAINING_DIMENSION * (200/600),
+    width: CONSTRAINING_DIMENSION * (220/600), height: CONSTRAINING_DIMENSION * (60/600),
+    color: colors.board,
+    radius: CONSTRAINING_DIMENSION * (5/600),
+    id: "begin",
+    font: SQUADAONE,
+    textSize: CONSTRAINING_DIMENSION * (40/600),
+    message: "begin",
+    onClick: function() {
+        start = true;
+    },
+});
+
+if (width < 601) {
+    buttons.add({
+        x: width/2 - CONSTRAINING_DIMENSION * (110/600), y: CONSTRAINING_DIMENSION * (300/600),
+        width: CONSTRAINING_DIMENSION * (220/600), height: CONSTRAINING_DIMENSION * (60/600),
+        color: colors.board,
+        radius: CONSTRAINING_DIMENSION * (5/600),
+        id: "fullscreen",
+        font: SQUADAONE,
+        textSize: CONSTRAINING_DIMENSION * (40/600),
+        message: "fullscreen",
+        onClick: function() {
+            buttons.buttons.splice(buttons.buttons.indexOf(buttons.getById("fullscreen")), 1);
+            fullScreenIt();
+        },
+    });
+}
+
+buttons.add({
     x: 0, y: 0,
     width: 0, height: 0,
     color: colors.board,
-    radius: 5,
+    radius: CONSTRAINING_DIMENSION * (5/600),
     id: "new game",
-    font: IMPACT,
-    textSize: 40,
+    font: SQUADAONE,
+    textSize: CONSTRAINING_DIMENSION * (40/600),
     message: "restart",
     onClick: function() {
         if (targetSettingsAmt === 0) {
@@ -254,10 +332,10 @@ buttons.add({
     x: 0, y: 0,
     width: 0, height: 0,
     color: colors.board,
-    radius: 5,
+    radius: CONSTRAINING_DIMENSION * (5/600),
     id: "settings",
-    font: IMPACT,
-    textSize: 40,
+    font: SQUADAONE,
+    textSize: CONSTRAINING_DIMENSION * (40/600),
     message: "settings",
     onClick: function () {
         targetSettingsAmt = 1;
@@ -268,10 +346,10 @@ buttons.add({
     x: 200, y: 200,
     width: 220, height: 60,
     color: colors.board,
-    radius: 5,
+    radius: CONSTRAINING_DIMENSION * (5/600),
     id: "change color",
-    font: IMPACT,
-    textSize: 40,
+    font: SQUADAONE,
+    textSize: CONSTRAINING_DIMENSION * (40/600),
     message: "color: " + colorOptions[colorInd],
     onClick: function () {
         colorInd ++;
@@ -296,9 +374,9 @@ buttons.add({
     x: 0, y: 0,
     width: 0, height: 0,
     color: colors.board,
-    radius: 5,
+    radius: CONSTRAINING_DIMENSION * (5/600),
     id: "change board",
-    font: IMPACT,
+    font: SQUADAONE,
     textSize: 40,
     message: "board size",
     onClick: function () {
@@ -315,9 +393,9 @@ buttons.add({
     x: 0, y: 0,
     width: 0, height: 0,
     color: colors.board,
-    radius: 5,
+    radius: CONSTRAINING_DIMENSION * (5/600),
     id: "exit settings",
-    font: IMPACT,
+    font: SQUADAONE,
     textSize: 40,
     message: "exit",
     onClick: function () {
@@ -515,13 +593,13 @@ var Board = (function() {
             fill(255);
         }
         rect(
-            x, y, w, h, 5
+            x, y, w, h, CONSTRAINING_DIMENSION * (5/600)
         );
         
         if (this.grid[i][j] > 0 && !white) {
             textAlign(CENTER, CENTER);
             fill(this.grid[i][j] > 4096 ? 255:0);
-            textFont(IMPACT, this.tileSize/6.097);
+            textFont(SQUADAONE, this.tileSize/6.097);
             text((value === undefined? this.grid[i][j]: value), x + w/2, y + h/2);
         }
     };
@@ -562,7 +640,7 @@ var Board = (function() {
         rect(this.indicatorX, this.indicatorY, this.indicatorW/2 - this.indicatorSeperation, this.indicatorH, 5);
         rect(this.indicatorX + this.indicatorW/2 + this.indicatorSeperation, this.indicatorY, this.indicatorW/2 - this.indicatorSeperation, this.indicatorH, 5);
         fill(0);
-        textFont(IMPACT, CONSTRAINING_DIMENSION/18.5555556);
+        textFont(SQUADAONE, CONSTRAINING_DIMENSION/18.5555556);
 
         textAlign(CENTER, CENTER);
 
@@ -856,7 +934,18 @@ animations = (function() {
             };
 
             Animation.prototype.display = function() {
+
+                var i, j;
+
+                if (this.target === undefined) {
+                    i = this.position[0], j = this.position[1];
+                } else {
+                    i = this.target[0], j = this.target[1];
+                }
                 
+                
+
+                if (board.grid[i][j] > 0) {
                 switch(this.type) {
                 case "slide":
 
@@ -916,6 +1005,7 @@ animations = (function() {
                     
                     break;
                 }
+            }
             };
 
             Animation.prototype.update = function() {
@@ -1090,9 +1180,9 @@ function dead() {
     noStroke()
     rect(0, 0, width, height);
     fill(255, 255 * deadAmt);
-    textFont(IMPACT, CONSTRAINING_DIMENSION/9.2777);
+    textFont(SQUADAONE, CONSTRAINING_DIMENSION/9.2777);
     text("YOU DIED D=\nYOUR SCORE WAS " + score, width/2, height/2.2);
-    textFont(IMPACT, CONSTRAINING_DIMENSION/18.554);
+    textFont(SQUADAONE, CONSTRAINING_DIMENSION/18.554);
     text("--click to play again--", width/2, height/1.6);
     if (click) {
         reset();
@@ -1100,26 +1190,82 @@ function dead() {
     }
 }
 
-function intro() {
-
-}
-
 var scenes = {
     play: play,
-    intro: intro,
     dead: dead,
 };
 
+let titleText = (() => {
+    let g = createGraphics(width, height, P2D);
+    g.textAlign(CENTER, CENTER);
+    g.textFont(SQUADAONE, CONSTRAINING_DIMENSION * 0.15);
+    g.fill(255);
+    for(var i = 0; i < 360; i ++) {
+        g.pushMatrix();
+        g.translate(cos(i) * CONSTRAINING_DIMENSION * (5/600), sin(i) * CONSTRAINING_DIMENSION * (5/600));
+        g.text("2048!!!!", width/2, CONSTRAINING_DIMENSION * (110/600));
+        g.popMatrix();
+    }
+    g.fill(0);
+    g.text("2048!!!!"  , width/2, CONSTRAINING_DIMENSION * (110/600));
+    return g.get();
+    
+})();
+let titleBg = (() => {
+    let g = createGraphics(width, height, P2D);
+    g.textAlign(CENTER, CENTER);
+    g.background(240);
+    g.noStroke();
+    let r = g.random();
+    g.randomSeed(4);
+    g.textFont(SQUADAONE, CONSTRAINING_DIMENSION * (23/600));
+    for (var i = 0; i < width; i += CONSTRAINING_DIMENSION * (80/600)) {
+        for (var j = 0; j < width; j += CONSTRAINING_DIMENSION * (80/600)) {
+            let n = g.floor(random(1, 10));
+            g.fill(colors[Math.pow(2, n)])
+            g.pushMatrix();
+            
+            let ten = CONSTRAINING_DIMENSION * (10/600);
+            let two5 = CONSTRAINING_DIMENSION * (25/600);
+            g.translate(i + g.random(-ten, ten) + two5, j + g.random(-ten, ten) + two5);
+            g.rotate(g.random(-30, 30));
+            g.rect(-two5, -two5, two5 * 2, two5 * 2, ten/2);
+            g.fill(0)
+            g.text(Math.pow(2, n), 0, 0);
+            g.popMatrix();
+        }
+    }
+    g.randomSeed(r);
+    return g.get();
+})();
 draw = function() {
     __frameRate = this.__frameRate;
 
     scenes[scene]();    
-
-    if (introPrecent <= 1) {
-        scenes.intro();
+    
+    if (!start) {
+       
+        
+        fill(255, 50);
+        rect(0, 0, width, height);
+        
+        image(titleBg, 0, 0);
+        image(titleText, 0, 0);
+        
+        
+        if (buttons.getById("begin")) {
+            buttons.getById("begin").run();
+        }
+        if (buttons.getById("fullscreen")) {
+            buttons.getById("fullscreen").run();
+        }
+    } else if (buttons.getById("begin")) {
+        buttons.buttons.splice(buttons.buttons.indexOf(buttons.getById("begin")), 1);
+        buttons.buttons.splice(buttons.buttons.indexOf(buttons.getById("fullscreen")), 1);
     }
 
     click = false;
+
 };
 
 mousePressed = function() {
@@ -1146,5 +1292,10 @@ var processingInstance = new Processing(canvas, programCode);}
 
 main();
     </script>
+    
     <script></script>
 </html> 
+
+
+<!-- it works on all screen sizes-->
+
